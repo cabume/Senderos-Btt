@@ -288,12 +288,10 @@ $('#sheet').addEventListener('click', e => {
   else if (a === 'go') goMenu();
   else if (a === 'karoo') karooMenu();
   else if (a === 'back') showTrail();
-  else if (a === 'flip') { sel.flip = !sel.flip; drawSelection(); ({ trail: showTrail, go: goMenu, karoo: karooMenu, point: pointMenu })[screen](); }
+  else if (a === 'flip') { sel.flip = !sel.flip; drawSelection(); ({ trail: showTrail, go: goMenu, karoo: karooMenu })[screen](); }
   else if (a === 'nav') openNav(b.dataset.app);
   else if (a === 'gpx') sendKaroo(b.dataset.m);
-  else if (a === 'point') pointMenu();
   else if (a === 'sharePoint') sharePoint();
-  else if (a === 'gmapsPoint') location.href = `https://www.google.com/maps/search/?api=1&query=${selLine()[0].map(v => v.toFixed(6)).join(',')}`;
   else if (a === 'layer') { setLayer(b.dataset.k); layersSheet(); }
   else if (a === 'saveZone') saveZone(+b.dataset.km);
   else if (a === 'stopZone') zoneStop = true;
@@ -402,25 +400,16 @@ function openNav(app) {
 function karooMenu() {
   screen = 'karoo';
   openSheet(`<h2>«${esc(sel.name)}» al Karoo</h2>
-    <div class="muted" style="margin:4px 0 12px">Se crea un GPX para la app <b>Hammerhead</b> del móvil, que lo pasa al Karoo para seguirlo con indicaciones.${isAndroid ? ' En Android se guarda en Descargas y te digo cómo mandarlo.' : ' Se abre Compartir: elige Hammerhead.'}</div>
+    <div class="muted" style="margin:4px 0 12px">Hace falta internet en el móvil y la app <b>Karoo Companion</b> (Hammerhead).</div>
     <div class="opts">
-      <button class="btn ok" data-a="point"><span>📍 Solo la entrada, con aviso en el Karoo<small>El Karoo te pregunta al momento si quieres ir hasta la entrada 🚩. Luego el sendero lo sigues en el mapa</small></span></button>
-      <button class="btn pri" data-a="gpx" data-m="full" ${me ? '' : 'disabled'}><span>🚴 Desde aquí hasta el sendero y el sendero<small>${me ? 'Te lleva por caminos hasta la entrada 🚩 y sigue por el sendero hasta el final' : 'Necesita tu posición: pulsa ⌖ primero'}</small></span></button>
-      <button class="btn" data-a="gpx" data-m="trail"><span>〰️ Solo el sendero<small>De la entrada 🚩 al final 🏁; el Karoo te guía hasta el principio</small></span></button>
+      <button class="btn ok" data-a="sharePoint"><span>📍 Solo la entrada, con aviso en el Karoo<small>Elige <b>Karoo Companion</b>: el Karoo te pregunta al momento si quieres ir hasta la entrada 🚩. Luego el sendero lo sigues en el mapa</small></span></button>
+      <button class="btn" data-a="gpx" data-m="full" ${me ? '' : 'disabled'}><span>🚴 Desde aquí hasta el sendero y el sendero<small>${me ? 'Ruta GPX por caminos hasta la entrada 🚩 y todo el sendero. No avisa: en el Karoo, Rutas → ⋮ → Sincronizar' : 'Necesita tu posición: pulsa ⌖ primero'}</small></span></button>
+      <button class="btn" data-a="gpx" data-m="trail"><span>〰️ Solo el sendero<small>Ruta GPX de la entrada 🚩 al final 🏁. No avisa: en el Karoo, Rutas → ⋮ → Sincronizar</small></span></button>
     </div>
     <div class="sub"><button class="btn" data-a="back" style="padding:7px 12px;font-size:13px">‹ Volver</button><button class="btn" data-a="flip" style="padding:7px 10px;font-size:13px">⇄ Entrar por el otro lado</button></div>`, true);
 }
-// La app de Hammerhead acepta puntos compartidos desde Google Maps / Mapas de Apple y el Karoo pregunta si navegar hasta ellos
-function pointMenu() {
-  screen = 'point';
-  openSheet(`<h2>Entrada de «${esc(sel.name)}» al Karoo</h2>
-    <div class="muted" style="margin:4px 0 12px">Al llegar, el Karoo avisa y pregunta si quieres navegar hasta el punto. Hace falta internet en el móvil.</div>
-    <div class="opts">
-      <button class="btn pri" data-a="sharePoint"><span>📤 Compartir el punto<small>En la lista elige <b>Hammerhead</b></small></span></button>
-      <button class="btn" data-a="gmapsPoint"><span>🗺️ Abrirlo en Google Maps<small>Si lo anterior no funciona: en Maps pulsa <b>Compartir</b> → <b>Hammerhead</b> (es la forma oficial)</small></span></button>
-    </div>
-    <div class="sub"><button class="btn" data-a="karoo" style="padding:7px 12px;font-size:13px">‹ Volver</button><button class="btn" data-a="flip" style="padding:7px 10px;font-size:13px">⇄ Entrar por el otro lado</button></div>`, true);
-}
+// La app Karoo Companion (Hammerhead) acepta este texto con un enlace de Google Maps con coordenadas:
+// el Karoo lo recibe al momento y pregunta si navegar hasta el punto (probado con su Karoo)
 async function sharePoint() {
   const [lat, lng] = selLine()[0].map(v => v.toFixed(6));
   const url = `https://maps.google.com/?q=${lat},${lng}`;
@@ -429,8 +418,8 @@ async function sharePoint() {
     try { await navigator.share({ title: sel.name, text }); return; }
     catch (e) { if (e.name === 'AbortError') return; }
   }
-  try { await navigator.clipboard.writeText(text); toast('Copiado. Pégalo en la app de Hammerhead o usa «Abrirlo en Google Maps»', 5000); }
-  catch { toast('No se pudo compartir: usa «Abrirlo en Google Maps»', 5000); }
+  try { await navigator.clipboard.writeText(text); toast('Este navegador no deja compartir: el punto se ha copiado', 5000); }
+  catch { toast('Este navegador no deja compartir el punto', 5000); }
 }
 async function brouter(a, b) {
   const r = await fetch(`https://brouter.de/brouter?lonlats=${a[1].toFixed(6)},${a[0].toFixed(6)}|${b[1].toFixed(6)},${b[0].toFixed(6)}&profile=trekking&alternativeidx=0&format=geojson`, { signal: AbortSignal.timeout(30000) });
@@ -489,9 +478,9 @@ async function sendKaroo(m) {
       <ol style="margin:0 0 12px 18px;padding:0;line-height:1.7">
         <li>Abre la app <b>Archivos</b> (o <b>Descargas</b>) del móvil.</li>
         <li><b>Mantén pulsado</b> «${esc(fname)}».</li>
-        <li>Pulsa <b>Compartir</b> (no «Abrir con») y elige <b>Hammerhead</b>.</li>
+        <li>Pulsa <b>Compartir</b> (no «Abrir con») y elige <b>Karoo Companion</b>.</li>
       </ol>
-      <div class="muted">La ruta sube a tu cuenta y el Karoo la recibe al sincronizar (necesita internet en el móvil). Si Hammerhead no sale en la lista: entra en <a href="https://dashboard.hammerhead.io" target="_blank" rel="noopener" style="color:inherit">dashboard.hammerhead.io</a> → Rutas → Importar y elige el archivo.</div>
+      <div class="muted">La ruta sube a tu cuenta y el Karoo la recibe al sincronizar (necesita internet en el móvil). Luego, en el Karoo: <b>Rutas → ⋮ → Sincronizar</b>. Si Karoo Companion no sale en la lista: entra en <a href="https://dashboard.hammerhead.io" target="_blank" rel="noopener" style="color:inherit">dashboard.hammerhead.io</a> → Rutas → Importar y elige el archivo.</div>
       <div class="sub"><button class="btn" data-a="back" style="padding:7px 12px;font-size:13px">‹ Volver al sendero</button></div>`, true);
   } catch (e) { toast('No se pudo: ' + e.message, 5000); }
 }
