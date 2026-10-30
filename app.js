@@ -288,9 +288,12 @@ $('#sheet').addEventListener('click', e => {
   else if (a === 'go') goMenu();
   else if (a === 'karoo') karooMenu();
   else if (a === 'back') showTrail();
-  else if (a === 'flip') { sel.flip = !sel.flip; drawSelection(); ({ trail: showTrail, go: goMenu, karoo: karooMenu })[screen](); }
+  else if (a === 'flip') { sel.flip = !sel.flip; drawSelection(); ({ trail: showTrail, go: goMenu, karoo: karooMenu, point: pointMenu })[screen](); }
   else if (a === 'nav') openNav(b.dataset.app);
   else if (a === 'gpx') sendKaroo(b.dataset.m);
+  else if (a === 'point') pointMenu();
+  else if (a === 'sharePoint') sharePoint();
+  else if (a === 'gmapsPoint') location.href = `https://www.google.com/maps/search/?api=1&query=${selLine()[0].map(v => v.toFixed(6)).join(',')}`;
   else if (a === 'layer') { setLayer(b.dataset.k); layersSheet(); }
   else if (a === 'saveZone') saveZone(+b.dataset.km);
   else if (a === 'stopZone') zoneStop = true;
@@ -399,12 +402,35 @@ function openNav(app) {
 function karooMenu() {
   screen = 'karoo';
   openSheet(`<h2>«${esc(sel.name)}» al Karoo</h2>
-    <div class="muted" style="margin:4px 0 12px">Se crea un GPX y se abre el menú Compartir del móvil: elige <b>Hammerhead</b> y la ruta aparecerá en el Karoo para seguirla con indicaciones.</div>
+    <div class="muted" style="margin:4px 0 12px">Se crea un GPX para la app <b>Hammerhead</b> del móvil, que lo pasa al Karoo para seguirlo con indicaciones.${isAndroid ? ' En Android se guarda en Descargas y te digo cómo mandarlo.' : ' Se abre Compartir: elige Hammerhead.'}</div>
     <div class="opts">
+      <button class="btn ok" data-a="point"><span>📍 Solo la entrada, con aviso en el Karoo<small>El Karoo te pregunta al momento si quieres ir hasta la entrada 🚩. Luego el sendero lo sigues en el mapa</small></span></button>
       <button class="btn pri" data-a="gpx" data-m="full" ${me ? '' : 'disabled'}><span>🚴 Desde aquí hasta el sendero y el sendero<small>${me ? 'Te lleva por caminos hasta la entrada 🚩 y sigue por el sendero hasta el final' : 'Necesita tu posición: pulsa ⌖ primero'}</small></span></button>
       <button class="btn" data-a="gpx" data-m="trail"><span>〰️ Solo el sendero<small>De la entrada 🚩 al final 🏁; el Karoo te guía hasta el principio</small></span></button>
     </div>
     <div class="sub"><button class="btn" data-a="back" style="padding:7px 12px;font-size:13px">‹ Volver</button><button class="btn" data-a="flip" style="padding:7px 10px;font-size:13px">⇄ Entrar por el otro lado</button></div>`, true);
+}
+// La app de Hammerhead acepta puntos compartidos desde Google Maps / Mapas de Apple y el Karoo pregunta si navegar hasta ellos
+function pointMenu() {
+  screen = 'point';
+  openSheet(`<h2>Entrada de «${esc(sel.name)}» al Karoo</h2>
+    <div class="muted" style="margin:4px 0 12px">Al llegar, el Karoo avisa y pregunta si quieres navegar hasta el punto. Hace falta internet en el móvil.</div>
+    <div class="opts">
+      <button class="btn pri" data-a="sharePoint"><span>📤 Compartir el punto<small>En la lista elige <b>Hammerhead</b></small></span></button>
+      <button class="btn" data-a="gmapsPoint"><span>🗺️ Abrirlo en Google Maps<small>Si lo anterior no funciona: en Maps pulsa <b>Compartir</b> → <b>Hammerhead</b> (es la forma oficial)</small></span></button>
+    </div>
+    <div class="sub"><button class="btn" data-a="karoo" style="padding:7px 12px;font-size:13px">‹ Volver</button><button class="btn" data-a="flip" style="padding:7px 10px;font-size:13px">⇄ Entrar por el otro lado</button></div>`, true);
+}
+async function sharePoint() {
+  const [lat, lng] = selLine()[0].map(v => v.toFixed(6));
+  const url = `https://maps.google.com/?q=${lat},${lng}`;
+  const text = `${sel.name} (entrada)\n${url}`;
+  if (navigator.share) {
+    try { await navigator.share({ title: sel.name, text }); return; }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(text); toast('Copiado. Pégalo en la app de Hammerhead o usa «Abrirlo en Google Maps»', 5000); }
+  catch { toast('No se pudo compartir: usa «Abrirlo en Google Maps»', 5000); }
 }
 async function brouter(a, b) {
   const r = await fetch(`https://brouter.de/brouter?lonlats=${a[1].toFixed(6)},${a[0].toFixed(6)}|${b[1].toFixed(6)},${b[0].toFixed(6)}&profile=trekking&alternativeidx=0&format=geojson`, { signal: AbortSignal.timeout(30000) });
@@ -454,9 +480,19 @@ async function sendKaroo(m) {
       try { await navigator.share({ files: [file], title: name }); return; }
       catch (e) { if (e.name === 'AbortError') return; }
     }
+    // Chrome en Android no deja a las webs compartir archivos .gpx: se guarda y se explica cómo mandarlo
     const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = fname;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    toast('GPX guardado en Descargas: ábrelo con la app de Hammerhead', 5000);
+    screen = 'karoo';
+    openSheet(`<h2>GPX guardado en Descargas</h2>
+      <div class="muted" style="margin:4px 0 12px">El navegador no deja pasarlo directamente a otra app, así que hay que mandarlo desde el archivo:</div>
+      <ol style="margin:0 0 12px 18px;padding:0;line-height:1.7">
+        <li>Abre la app <b>Archivos</b> (o <b>Descargas</b>) del móvil.</li>
+        <li><b>Mantén pulsado</b> «${esc(fname)}».</li>
+        <li>Pulsa <b>Compartir</b> (no «Abrir con») y elige <b>Hammerhead</b>.</li>
+      </ol>
+      <div class="muted">La ruta sube a tu cuenta y el Karoo la recibe al sincronizar (necesita internet en el móvil). Si Hammerhead no sale en la lista: entra en <a href="https://dashboard.hammerhead.io" target="_blank" rel="noopener" style="color:inherit">dashboard.hammerhead.io</a> → Rutas → Importar y elige el archivo.</div>
+      <div class="sub"><button class="btn" data-a="back" style="padding:7px 12px;font-size:13px">‹ Volver al sendero</button></div>`, true);
   } catch (e) { toast('No se pudo: ' + e.message, 5000); }
 }
 
