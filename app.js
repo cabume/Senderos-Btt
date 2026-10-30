@@ -291,7 +291,6 @@ $('#sheet').addEventListener('click', e => {
   else if (a === 'gpsChange') gpsChooser();
   else if (a === 'applePoint') applePoint();
   else if (a === 'helpGps') helpSheet(b.dataset.g);
-  else if (a === 'shareApp') shareApp();
   else if (a === 'back') showTrail();
   else if (a === 'flip') { sel.flip = !sel.flip; drawSelection(); ({ trail: showTrail, go: goMenu, karoo: gpsMenu, gps: gpsChooser })[screen](); }
   else if (a === 'nav') openNav(b.dataset.app);
@@ -629,7 +628,6 @@ async function wipe() {
 $('#layBtn').onclick = () => { if ($('#sheet.show') && !sel) closeSheet(); else layersSheet(); };
 
 // ---------- ayuda ----------
-const APP_URL = 'https://cabume.github.io/senderos-btt/';
 function gpsHelp(g) {
   const android = !isIOS;
   if (g === 'karoo') return `<p><b>Con aviso al momento (solo la entrada):</b></p><ol>
@@ -677,16 +675,8 @@ function helpSheet(g = settings.gps || 'karoo') {
       ${isIOS ? '<p class="muted">En iPhone, si no abres la app en unas semanas, Safari puede borrar lo guardado: vuelve a guardarlo antes de la salida.</p>' : ''}</details>
     <details><summary>📲 Tenerla como app</summary>
       <p>${isIOS ? 'Ábrela en <b>Safari</b> → <b>Compartir</b> ⬆️ → <b>Añadir a pantalla de inicio</b>.' : 'En Chrome sale <b>Instalar</b>; si no, menú ⋮ → <b>Añadir a pantalla de inicio</b>.'}</p></details>
-    <details><summary>👥 Pasársela a otros</summary>
-      <p>Mándales este enlace: <b>${APP_URL}</b></p>
-      <button class="btn" data-a="shareApp" style="width:100%">📤 Compartir el enlace</button></details>
     </div>`);
   if (switching) $('#helpGps').scrollIntoView({ block: 'nearest' });
-}
-async function shareApp() {
-  const text = 'Senderos BTT: mapa de senderos con nombre y dificultad, y te lleva hasta ellos con el Karoo, Garmin o el móvil';
-  if (navigator.share) { try { await navigator.share({ title: 'Senderos BTT', text, url: APP_URL }); return; } catch (e) { if (e.name === 'AbortError') return; } }
-  try { await navigator.clipboard.writeText(APP_URL); toast('Enlace copiado'); } catch { toast(APP_URL, 6000); }
 }
 $('#helpBtn').onclick = () => { if ($('#sheet.show') && screen === 'help') closeSheet(); else helpSheet(); };
 
