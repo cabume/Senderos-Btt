@@ -1,0 +1,16 @@
+{
+  "name": "Senderos BTT",
+  "short_name": "Senderos",
+  "description": "Senderos BTT con su nombre y dificultad. Elige uno y que el Karoo o el navegador del móvil te lleve hasta él.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#16201a",
+  "theme_color": "#16201a",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
