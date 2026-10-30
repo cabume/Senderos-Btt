@@ -82,6 +82,16 @@ button{font:inherit;color:inherit}
 .legend i{width:24px;height:5px;border-radius:3px;flex:none}
 .prog{height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;margin:8px 0}
 .prog i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
+.help details{background:var(--bg3);border-radius:12px;margin:8px 0;padding:0 14px}
+.help summary{cursor:pointer;font-weight:600;padding:13px 0;list-style:none}
+.help summary::-webkit-details-marker{display:none}
+.help summary::after{content:'›';float:right;color:var(--tx2);transition:transform .2s}
+.help details[open] summary::after{transform:rotate(90deg)}
+.help ol,.help ul{margin:0 0 12px 18px;padding:0;line-height:1.6}
+.help p{margin:0 0 12px;line-height:1.5}
+.help .gpsseg{display:flex;gap:6px;margin:0 0 10px}
+.help .gpsseg button{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:7px 4px;font-size:13px;cursor:pointer;color:var(--tx2)}
+.help .gpsseg button.on{border-color:var(--acc);color:var(--tx);font-weight:600}
 h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2);margin:16px 0 8px}
 
 /* mapa */
@@ -123,6 +133,7 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2)
 <div id="status" class="fl"></div>
 
 <div id="side">
+  <button id="helpBtn" class="fl" aria-label="Ayuda">❓</button>
   <button id="locBtn" class="fl" aria-label="Mi posición">⌖</button>
 </div>
 
