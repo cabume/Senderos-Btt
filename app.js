@@ -1,6 +1,11 @@
 'use strict';
 /* Senderos BTT — ver senderos con su nombre y dificultad y llegar hasta ellos con el Karoo o el móvil */
 
+// Safari de iOS 15 o anterior no tiene AbortSignal.timeout: sin esto fallaban todas las peticiones de senderos
+if (window.AbortSignal && !AbortSignal.timeout) {
+  AbortSignal.timeout = ms => { const c = new AbortController(); setTimeout(() => c.abort(), ms); return c.signal; };
+}
+
 // ---------- utilidades ----------
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
