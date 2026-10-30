@@ -1,5 +1,5 @@
 // Senderos BTT: guarda la app para que abra sin cobertura. Mapas y senderos van aparte, en IndexedDB.
-const CACHE = 'senderos-v4';
+const CACHE = 'senderos-v6';
 const FILES = ['./', 'index.html', 'app.js', 'manifest.json', 'icon-192.png', 'icon-180.png', 'lib/leaflet.js', 'lib/leaflet.css'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });

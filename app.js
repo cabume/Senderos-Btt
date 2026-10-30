@@ -286,9 +286,14 @@ $('#sheet').addEventListener('click', e => {
   const a = b.dataset.a;
   if (a === 'close') closeSheet();
   else if (a === 'go') goMenu();
-  else if (a === 'karoo') karooMenu();
+  else if (a === 'karoo') gpsMenu();
+  else if (a === 'setGps') { settings.gps = b.dataset.g; saveSettings(); gpsMenu(); }
+  else if (a === 'gpsChange') gpsChooser();
+  else if (a === 'applePoint') applePoint();
+  else if (a === 'helpGps') helpSheet(b.dataset.g);
+  else if (a === 'shareApp') shareApp();
   else if (a === 'back') showTrail();
-  else if (a === 'flip') { sel.flip = !sel.flip; drawSelection(); ({ trail: showTrail, go: goMenu, karoo: karooMenu })[screen](); }
+  else if (a === 'flip') { sel.flip = !sel.flip; drawSelection(); ({ trail: showTrail, go: goMenu, karoo: gpsMenu, gps: gpsChooser })[screen](); }
   else if (a === 'nav') openNav(b.dataset.app);
   else if (a === 'gpx') sendKaroo(b.dataset.m);
   else if (a === 'sharePoint') sharePoint();
@@ -358,7 +363,7 @@ function showTrail() {
       ${sel.w.f ? `<span class="chip">${esc(SURF[sel.w.f] || sel.w.f)}</span>` : ''}
     </div>
     <div class="dist" id="selDist"></div>
-    <div class="acts"><button class="btn pri" data-a="go">🧭 Llévame</button><button class="btn" data-a="karoo">🚴 Al Karoo</button></div>
+    <div class="acts"><button class="btn pri" data-a="go">🧭 Llévame</button><button class="btn" data-a="karoo">🚴 Al ${myGPS() ? myGPS().name : 'GPS'}</button></div>
     <div class="sub"><button class="btn" data-a="flip" style="padding:7px 10px;font-size:13px">⇄ Entrar por el otro lado</button>
       <a href="https://www.openstreetmap.org/way/${sel.w.id}" target="_blank" rel="noopener">Ver en OpenStreetMap</a></div>`, true);
   updateDistance();
@@ -396,17 +401,47 @@ function openNav(app) {
   location.href = url;
 }
 
-// ---------- mandarlo al Karoo ----------
-function karooMenu() {
-  screen = 'karoo';
-  openSheet(`<h2>«${esc(sel.name)}» al Karoo</h2>
-    <div class="muted" style="margin:4px 0 12px">Hace falta internet en el móvil y la app <b>Karoo Companion</b> (Hammerhead).</div>
+// ---------- mandarlo al GPS de la bici (Karoo, Garmin u otro) ----------
+// Karoo: la app Karoo Companion acepta un punto (texto con enlace de Google Maps) y el Karoo avisa al momento.
+// Garmin: Garmin Connect solo acepta puntos desde Mapas de Apple (iPhone); los GPX se importan como «Recorrido».
+const GPS = {
+  karoo: { name: 'Karoo', app: 'Karoo Companion', after: 'En el Karoo: <b>Rutas → ⋮ → Sincronizar</b> y ábrela.' },
+  garmin: { name: 'Garmin', app: 'Connect', after: 'En Garmin Connect se abre como <b>Recorrido</b>: pulsa <b>Enviar al dispositivo</b>. En el Edge: <b>Navegación → Recorridos</b>.' },
+  otro: { name: 'GPS', app: 'la app de tu GPS', after: 'Después sincroniza el GPS con su app (Wahoo, Bryton, Komoot…).' },
+};
+const myGPS = () => GPS[settings.gps] || null;
+function gpsChooser() {
+  screen = 'gps';
+  openSheet(`<h2>¿Qué GPS llevas en la bici?</h2>
+    <div class="muted" style="margin:4px 0 12px">Para darte los pasos buenos. Se puede cambiar luego.</div>
     <div class="opts">
-      <button class="btn ok" data-a="sharePoint"><span>📍 Solo la entrada, con aviso en el Karoo<small>Elige <b>Karoo Companion</b>: el Karoo te pregunta al momento si quieres ir hasta la entrada 🚩. Luego el sendero lo sigues en el mapa</small></span></button>
-      <button class="btn" data-a="gpx" data-m="full" ${me ? '' : 'disabled'}><span>🚴 Desde aquí hasta el sendero y el sendero<small>${me ? 'Ruta GPX por caminos hasta la entrada 🚩 y todo el sendero. No avisa: en el Karoo, Rutas → ⋮ → Sincronizar' : 'Necesita tu posición: pulsa ⌖ primero'}</small></span></button>
-      <button class="btn" data-a="gpx" data-m="trail"><span>〰️ Solo el sendero<small>Ruta GPX de la entrada 🚩 al final 🏁. No avisa: en el Karoo, Rutas → ⋮ → Sincronizar</small></span></button>
+      <button class="btn" data-a="setGps" data-g="karoo"><span>Hammerhead Karoo<small>Con la app Karoo Companion</small></span></button>
+      <button class="btn" data-a="setGps" data-g="garmin"><span>Garmin Edge<small>Con la app Garmin Connect</small></span></button>
+      <button class="btn" data-a="setGps" data-g="otro"><span>Otro (Wahoo, Bryton…)<small>Se manda la ruta en GPX</small></span></button>
+    </div>`, true);
+}
+function gpsMenu() {
+  const d = myGPS(); if (!d) { gpsChooser(); return; }
+  screen = 'karoo';
+  // Opción de punto con aviso: Karoo siempre; Garmin solo en iPhone (vía Mapas de Apple)
+  const point = settings.gps === 'karoo'
+    ? `<button class="btn ok" data-a="sharePoint"><span>📍 Solo la entrada, con aviso en el Karoo<small>Elige <b>Karoo Companion</b>: el Karoo pregunta al momento si quieres ir hasta la entrada 🚩</small></span></button>`
+    : settings.gps === 'garmin' && isIOS
+      ? `<button class="btn ok" data-a="applePoint"><span>📍 Solo la entrada, al Garmin<small>Se abre en Mapas de Apple: toca el punto → <b>Compartir</b> → <b>Connect</b>. El Edge la guarda para navegar hasta ella</small></span></button>`
+      : '';
+  const sync = settings.gps === 'karoo' ? ' No avisa: hay que sincronizar el Karoo.' : '';
+  openSheet(`<h2>«${esc(sel.name)}» al ${d.name}</h2>
+    <div class="muted" style="margin:4px 0 12px">Hace falta internet en el móvil y la app <b>${d.app}</b>.</div>
+    <div class="opts">${point}
+      <button class="btn" data-a="gpx" data-m="full" ${me ? '' : 'disabled'}><span>🚴 Desde aquí hasta el sendero y el sendero<small>${me ? 'Ruta GPX por caminos hasta la entrada 🚩 y todo el sendero.' + sync : 'Necesita tu posición: pulsa ⌖ primero'}</small></span></button>
+      <button class="btn" data-a="gpx" data-m="trail"><span>〰️ Solo el sendero<small>Ruta GPX de la entrada 🚩 al final 🏁.${sync}</small></span></button>
     </div>
-    <div class="sub"><button class="btn" data-a="back" style="padding:7px 12px;font-size:13px">‹ Volver</button><button class="btn" data-a="flip" style="padding:7px 10px;font-size:13px">⇄ Entrar por el otro lado</button></div>`, true);
+    <div class="sub"><button class="btn" data-a="back" style="padding:7px 12px;font-size:13px">‹ Volver</button><button class="btn" data-a="flip" style="padding:7px 10px;font-size:13px">⇄ Entrar por el otro lado</button></div>
+    <div class="sub"><span class="muted">Tu GPS: ${d.name === 'GPS' ? 'otro' : d.name}</span><button data-a="gpsChange" style="background:none;border:0;color:var(--tx2);text-decoration:underline;cursor:pointer;font-size:13px;padding:0">Cambiar</button></div>`, true);
+}
+function applePoint() {
+  const [lat, lng] = selLine()[0].map(v => v.toFixed(6));
+  location.href = `https://maps.apple.com/?ll=${lat},${lng}&q=${encodeURIComponent(sel.name + ' (entrada)')}`;
 }
 // La app Karoo Companion (Hammerhead) acepta este texto con un enlace de Google Maps con coordenadas:
 // el Karoo lo recibe al momento y pregunta si navegar hasta el punto (probado con su Karoo)
@@ -473,14 +508,17 @@ async function sendKaroo(m) {
     const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = fname;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     screen = 'karoo';
+    const d = myGPS() || GPS.otro, k = settings.gps === 'karoo', gm = settings.gps === 'garmin';
     openSheet(`<h2>GPX guardado en Descargas</h2>
       <div class="muted" style="margin:4px 0 12px">El navegador no deja pasarlo directamente a otra app, así que hay que mandarlo desde el archivo:</div>
       <ol style="margin:0 0 12px 18px;padding:0;line-height:1.7">
         <li>Abre la app <b>Archivos</b> (o <b>Descargas</b>) del móvil.</li>
         <li><b>Mantén pulsado</b> «${esc(fname)}».</li>
-        <li>Pulsa <b>Compartir</b> (no «Abrir con») y elige <b>Karoo Companion</b>.</li>
+        <li>${k ? 'Pulsa <b>Compartir</b> (no «Abrir con») y elige <b>Karoo Companion</b>.' : gm ? 'Pulsa <b>Compartir</b> o <b>Abrir con</b> y elige <b>Connect</b>.' : 'Pulsa <b>Compartir</b> y elige la app de tu GPS.'}</li>
+        <li>${d.after}</li>
       </ol>
-      <div class="muted">La ruta sube a tu cuenta y el Karoo la recibe al sincronizar (necesita internet en el móvil). Luego, en el Karoo: <b>Rutas → ⋮ → Sincronizar</b>. Si Karoo Companion no sale en la lista: entra en <a href="https://dashboard.hammerhead.io" target="_blank" rel="noopener" style="color:inherit">dashboard.hammerhead.io</a> → Rutas → Importar y elige el archivo.</div>
+      ${k ? `<div class="muted">Si Karoo Companion no sale en la lista: entra en <a href="https://dashboard.hammerhead.io" target="_blank" rel="noopener" style="color:inherit">dashboard.hammerhead.io</a> → Rutas → Importar y elige el archivo.</div>` : ''}
+      ${gm ? `<div class="muted">Si Connect no sale en la lista: entra en <a href="https://connect.garmin.com/modern/courses" target="_blank" rel="noopener" style="color:inherit">connect.garmin.com → Recorridos</a> → Importar y elige el archivo.</div>` : ''}
       <div class="sub"><button class="btn" data-a="back" style="padding:7px 12px;font-size:13px">‹ Volver al sendero</button></div>`, true);
   } catch (e) { toast('No se pudo: ' + e.message, 5000); }
 }
@@ -590,6 +628,68 @@ async function wipe() {
 }
 $('#layBtn').onclick = () => { if ($('#sheet.show') && !sel) closeSheet(); else layersSheet(); };
 
+// ---------- ayuda ----------
+const APP_URL = 'https://cabume.github.io/senderos-btt/';
+function gpsHelp(g) {
+  const android = !isIOS;
+  if (g === 'karoo') return `<p><b>Con aviso al momento (solo la entrada):</b></p><ol>
+      <li>En la ficha del sendero pulsa <b>🚴 Al Karoo → 📍 Solo la entrada</b>.</li>
+      <li>En la lista de Compartir elige <b>Karoo Companion</b>.</li>
+      <li>El Karoo pita y pregunta si quieres navegar hasta la entrada 🚩.</li></ol>
+    <p><b>Ruta entera (GPX):</b></p><ol>
+      <li>Pulsa <b>Desde aquí hasta el sendero…</b> o <b>Solo el sendero</b>.</li>
+      ${android ? '<li>Se guarda en Descargas. Abre <b>Archivos</b>, mantén pulsado el archivo → <b>Compartir</b> (no «Abrir con») → <b>Karoo Companion</b>.</li>' : '<li>En Compartir elige <b>Karoo Companion</b>.</li>'}
+      <li>El Karoo no avisa: entra en <b>Rutas → ⋮ → Sincronizar</b> (mejor con wifi) y ábrela.</li></ol>`;
+  if (g === 'garmin') return `${isIOS ? `<p><b>Solo la entrada:</b></p><ol>
+      <li>Pulsa <b>🚴 Al Garmin → 📍 Solo la entrada</b>: se abre en Mapas de Apple.</li>
+      <li>Toca el punto → <b>Compartir</b> → <b>Connect</b>.</li>
+      <li>En el Edge: <b>Navegación → Búsquedas recientes</b> para ir hasta allí.</li></ol>` : '<p class="muted">En Android, Garmin no admite puntos sueltos: usa la ruta en GPX.</p>'}
+    <p><b>Ruta entera (GPX):</b></p><ol>
+      <li>Pulsa <b>Desde aquí hasta el sendero…</b> o <b>Solo el sendero</b>.</li>
+      ${android ? '<li>Se guarda en Descargas. Abre <b>Archivos</b>, mantén pulsado el archivo → <b>Compartir</b> o <b>Abrir con</b> → <b>Connect</b>.</li>' : '<li>En Compartir elige <b>Connect</b>.</li>'}
+      <li>En Garmin Connect se abre como <b>Recorrido</b>: pulsa <b>Enviar al dispositivo</b>.</li>
+      <li>En el Edge: <b>Navegación → Recorridos</b>.</li></ol>`;
+  return `<ol><li>Pulsa <b>Desde aquí hasta el sendero…</b> o <b>Solo el sendero</b>.</li>
+      ${android ? '<li>Se guarda en Descargas. Abre <b>Archivos</b>, mantén pulsado el archivo → <b>Compartir</b> → la app de tu GPS (Wahoo, Bryton, Komoot…).</li>' : '<li>En Compartir elige la app de tu GPS (Wahoo, Bryton, Komoot…).</li>'}
+      <li>Sincroniza el GPS con su app.</li></ol>`;
+}
+function helpSheet(g = settings.gps || 'karoo') {
+  const switching = g !== (settings.gps || 'karoo'); // se ha tocado otro GPS dentro de la ayuda
+  sel = null; L_sel.clearLayers(); screen = 'help';
+  localStorage.setItem('senderos.help', '1');
+  openSheet(`<h2>Cómo funciona</h2>
+    <div class="muted" style="margin:2px 0 8px">Toca cada apartado para verlo.</div>
+    <div class="help">
+    <details ${switching ? '' : 'open'}><summary>🗺️ Ver los senderos</summary>
+      <p>Acerca el mapa (unos 3-4 km de pantalla) y aparecen los senderos con su nombre. La primera vez en cada zona tardan unos segundos; luego quedan guardados.</p>
+      <p>Colores: 🟢 fácil · 🔵 intermedio · ⚫ difícil · 🔴 extremo · naranja punteado sin dificultad marcada · marrón a rayas pista. La leyenda está en 🗺️.</p>
+      <p>⌖ te sitúa en el mapa (y te sigue si lo vuelves a pulsar). 🔍 busca senderos por nombre, pueblos o coordenadas.</p></details>
+    <details><summary>👆 Elegir un sendero</summary>
+      <p>Tócalo en el mapa: se marca entero en amarillo y sale su ficha con dificultad, longitud, cuánto sube y baja, y a qué distancia estás de la entrada 🚩 (el extremo más cercano). <b>⇄ Entrar por el otro lado</b> cambia el sentido.</p></details>
+    <details><summary>🧭 Llévame con el móvil</summary>
+      <p>Abre ${isIOS ? 'Google Maps o Mapas de Apple' : 'Google Maps u otra app de mapas (OsmAnd, Organic Maps…)'} con la ruta hasta la entrada del sendero.</p></details>
+    <details ${switching ? 'open' : ''} id="helpGps"><summary>🚴 Mandarlo al GPS de la bici</summary>
+      <div class="gpsseg">${Object.entries({ karoo: 'Karoo', garmin: 'Garmin', otro: 'Otro' }).map(([k, n]) => `<button data-a="helpGps" data-g="${k}" class="${k === g ? 'on' : ''}">${n}</button>`).join('')}</div>
+      ${gpsHelp(g)}
+      <p class="muted">Hace falta internet en el móvil para que la ruta llegue al GPS.</p></details>
+    <details><summary>📶 Ir sin cobertura</summary>
+      <p>Antes de salir, con wifi: abre la zona de la ruta y en <b>🗺️ → Guardar 5 km / 10 km a la redonda</b>. Así tendrás mapa y senderos sin datos.</p>
+      ${isIOS ? '<p class="muted">En iPhone, si no abres la app en unas semanas, Safari puede borrar lo guardado: vuelve a guardarlo antes de la salida.</p>' : ''}</details>
+    <details><summary>📲 Tenerla como app</summary>
+      <p>${isIOS ? 'Ábrela en <b>Safari</b> → <b>Compartir</b> ⬆️ → <b>Añadir a pantalla de inicio</b>.' : 'En Chrome sale <b>Instalar</b>; si no, menú ⋮ → <b>Añadir a pantalla de inicio</b>.'}</p></details>
+    <details><summary>👥 Pasársela a otros</summary>
+      <p>Mándales este enlace: <b>${APP_URL}</b></p>
+      <button class="btn" data-a="shareApp" style="width:100%">📤 Compartir el enlace</button></details>
+    </div>`);
+  if (switching) $('#helpGps').scrollIntoView({ block: 'nearest' });
+}
+async function shareApp() {
+  const text = 'Senderos BTT: mapa de senderos con nombre y dificultad, y te lleva hasta ellos con el Karoo, Garmin o el móvil';
+  if (navigator.share) { try { await navigator.share({ title: 'Senderos BTT', text, url: APP_URL }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(APP_URL); toast('Enlace copiado'); } catch { toast(APP_URL, 6000); }
+}
+$('#helpBtn').onclick = () => { if ($('#sheet.show') && screen === 'help') closeSheet(); else helpSheet(); };
+
 // ---------- instalar como app ----------
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; showInstall(); });
@@ -617,6 +717,8 @@ function showInstall() {
     else if (!settings.view) startGPS(true);
   } catch { if (!settings.view) startGPS(true); }
   loadTrails();
+  // La primera vez se enseña la ayuda; el aviso de instalar, después
+  if (!localStorage.getItem('senderos.help')) setTimeout(() => helpSheet(), 900);
   if (isIOS) setTimeout(showInstall, 2500);
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
